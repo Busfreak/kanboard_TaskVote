@@ -16,7 +16,6 @@ class Plugin extends Base
     public function initialize()
     {
         $this->template->hook->attach('template:board:task:icons', 'TaskVote:board/task/icons');
-        $this->template->hook->attach('template:board:column:dropdown', 'TaskVote:board/column/dropdown');
     }
 
     public function onStartup()
@@ -59,7 +58,7 @@ class Plugin extends Base
 
     public function getPluginVersion()
     {
-        return '0.0.1';
+        return '0.0.2';
     }
 
     public function getPluginHomepage()

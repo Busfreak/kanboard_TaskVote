@@ -21,7 +21,8 @@ class TaskVoteHelper extends Base
      public function getVotes($task_id)
     {
        return array(
-            'can_vote' => $this->taskVoteModel->getUserCanVote($task_id),
+            'can_upvote' => $this->taskVoteModel->getUserCanUpVote($task_id),
+            'can_downvote' => $this->taskVoteModel->getUserCanDownVote($task_id),
             'up_votes' => $this->taskVoteModel->getUpVotes($task_id),
             'down_votes' => $this->taskVoteModel->getDownVotes($task_id)
         );

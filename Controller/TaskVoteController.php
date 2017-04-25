@@ -42,8 +42,6 @@ class TaskVoteController extends BaseController {
 
         $result = $this->taskVoteModel->upvote($task_id, $column_id);
 
-        $this->taskVoteModel->sortByVoting($column_id);
-
         $this->response->redirect($this->helper->url->to('BoardViewController', 'show', array('project_id' => $project['id'], 'search' => $search)), true);
     }
 
@@ -60,8 +58,6 @@ class TaskVoteController extends BaseController {
         $search = $this->helper->projectHeader->getSearchQuery($project);
 
         $result = $this->taskVoteModel->downvote($task_id, $column_id);
-
-        $this->taskVoteModel->sortByVoting($column_id);
 
         $this->response->redirect($this->helper->url->to('BoardViewController', 'show', array('project_id' => $project['id'], 'search' => $search)), true);
     }

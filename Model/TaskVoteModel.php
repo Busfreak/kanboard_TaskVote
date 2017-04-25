@@ -23,22 +23,39 @@ class TaskVoteModel extends Base
     const TABLE = 'task_has_votes';
 
     /**
-     * Return user can vote
+     * Return user can upvote
      *
      * @access public
      * @param  integer   $task_id    Task id
      * @return boolean
      */
-    public function getUserCanVote($task_id)
+    public function getUserCanUpVote($task_id)
     {
         return !$this->db->table(self::TABLE)
             ->eq('task_id', $task_id)
             ->eq('user_id', $this->userSession->getId())
+            ->eq('vote', 1)
             ->exists();
     }
 
     /**
-     * Return upvote
+     * Return user can downvote
+     *
+     * @access public
+     * @param  integer   $task_id    Task id
+     * @return boolean
+     */
+    public function getUserCanDownVote($task_id)
+    {
+        return !$this->db->table(self::TABLE)
+            ->eq('task_id', $task_id)
+            ->eq('user_id', $this->userSession->getId())
+            ->eq('vote', -1)
+            ->exists();
+    }
+
+    /**
+     * Return upvotes
      *
      * @access public
      * @param  integer   $task_id    Task id
@@ -55,7 +72,7 @@ class TaskVoteModel extends Base
     }
 
      /**
-     * Return downvote
+     * Return downvotes
      *
      * @access public
      * @param  integer   $task_id    Task id
@@ -69,46 +86,6 @@ class TaskVoteModel extends Base
             ->lte('vote', 0)
             ->findOne();
         return abs($stats['vote']);
-    }
-
-     /**
-     * Return voting order
-     *
-     * @access private
-     * @param  integer   $column_id    Column id
-     * @return array
-     */
-    private function getVotingOrder($column_id)
-    {
-        return $this->db
-            ->table(TaskModel::TABLE)
-            ->columns(
-                TaskModel::TABLE.'.id',
-                TaskModel::TABLE.'.position'
-            )
-            ->subquery("SELECT COALESCE(SUM(vote), 0) FROM ".self::TABLE." WHERE task_id=".TaskModel::TABLE.".id", 'vote')
-            ->join(self::TABLE, 'task_id', 'id')
-            ->eq(TaskModel::TABLE.'.column_id', $column_id)
-            ->desc('vote')
-            ->groupBy(TaskModel::TABLE.'.id')
-            ->findAll();
-    }
-
-     /**
-     * Sort tasks by voting
-     *
-     * @access public
-     * @param  integer   $column_id    Column id
-     * @return arboolean|integerray
-     */
-    public function sortByVoting($column_id)
-    {
-        $tasks = $this->getVotingOrder($column_id);
-        $position = 1;
-        foreach ($tasks as $task) {
-            $this->db->table(TaskModel::TABLE)->eq('id', intval($task['id']))->update(array('position' => $position));
-            $position += 1;
-        }
     }
 
     /**
@@ -136,7 +113,7 @@ class TaskVoteModel extends Base
     }
 
     /**
-     * downvote task
+     * vote task
      *
      * @access private
      * @param  integer   $task_id    Column id
@@ -146,16 +123,27 @@ class TaskVoteModel extends Base
     {
         $this->db->startTransaction();
 
-        if (! $this->db->table(self::TABLE)->insert(array('task_id' => $task_id, 'user_id' => $this->userSession->getId(), 'date' => time(), 'vote' => $value))) {
-            $this->db->cancelTransaction();
-            return false;
+        if ($this->getUserCanUpVote($task_id) and $this->getUserCanDownVote($task_id)){
+            if (! $this->db->table(self::TABLE)->insert(array('task_id' => $task_id, 'user_id' => $this->userSession->getId(), 'date' => time(), 'vote' => $value))) {
+                $this->db->cancelTransaction();
+                return false;
+            }
+        $vote_id = $this->db->getLastId();
+        }
+        else {
+            $vote = $this->db->table(self::TABLE)
+                ->eq('task_id', $task_id)
+                ->eq('user_id', $this->userSession->getId())
+                ->findOne();
+            $vote_id = (int) $vote['id'];
+
+            if (! $this->db->table(self::TABLE)->eq('id', $vote_id)->update(array('date' => time(), 'vote' => $value))) {
+                $this->db->cancelTransaction();
+                return false;
+            }
         }
 
-        $vote_id = $this->db->getLastId();
-
         $this->db->closeTransaction();
-
-        $this->sortByVoting($column_id);
 
         return (int) $vote_id;
     }
